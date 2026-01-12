@@ -15,6 +15,7 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
     private let tableView = UITableView()
     private let refreshControl = UIRefreshControl()
     private let searchController = UISearchController(searchResultsController: nil)
+    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
 
     override var showsLargeTitle: Bool { true }
 
@@ -25,6 +26,10 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
 
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
+
+        // Top-centered small spinner for initial load
+        loadingIndicator.hidesWhenStopped = true
+        navigationItem.titleView = loadingIndicator
 
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -87,10 +92,28 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
         .bind(to: viewModel.reloadTrigger)
         .disposed(by: disposeBag)
 
+        // Loading state → spinner and refresh control
+        viewModel.isLoading
+            .observe(on: MainScheduler.instance)
+            .subscribe(onNext: { [weak self] loading in
+                guard let self else { return }
+                if loading {
+                    // show top spinner if not pulling
+                    if self.refreshControl.isRefreshing == false {
+                        self.loadingIndicator.startAnimating()
+                    }
+                } else {
+                    self.loadingIndicator.stopAnimating()
+                    if self.refreshControl.isRefreshing {
+                        self.refreshControl.endRefreshing()
+                    }
+                }
+            })
+            .disposed(by: disposeBag)
+
         // Table binding
         viewModel.filteredIncidents
             .observe(on: MainScheduler.instance)
-            .do(onNext: { [weak self] _ in self?.refreshControl.endRefreshing() })
             .bind(to: tableView.rx.items(
                 cellIdentifier: IncidentTableViewCell.identifier,
                 cellType: IncidentTableViewCell.self
