@@ -1,0 +1,45 @@
+//
+//  .gitignore
+//  incident
+//
+//  Created by Aji Nugrahaning Widhi on 12/01/26.
+//
+
+# Xcode
+#
+# gitignore for Xcode projects and all the generated files.
+#
+## Build generated files
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+## Other
+*.moved-aside
+.idea/
+# Catches Carthage, Pods, and Swift Package Manager directories.
+DerivedData/
+.DS_Store
+*.swp
+*.xcuserstate
+# Code signing files
+*.xcsigningkeys
+# Optional files
+*.hmap
+*.lock
+# Swift Package Manager
+.swiftpm/
+# CocoaPods
+Pods/
+# Carthage
+Carthage/Build/
+# Snapshots
+*fastlane/screenshots/
+# Playgrounds
+*.playground/xcuserdata/
+*.playground/DerivedData/
