@@ -8,6 +8,7 @@
 import Foundation
 import RxSwift
 import RxRelay
+import RxCocoa
 
 final class IncidentListViewModel: BaseViewModel {
 
@@ -67,6 +68,18 @@ final class IncidentListViewModel: BaseViewModel {
                 }
             }
             .share(replay: 1, scope: .whileConnected) // <-- scoped replay
+    }()
+
+    lazy var incidentsDriver: Driver<[Incident]> = {
+        incidents.observe(on: MainScheduler.instance).asDriver(onErrorJustReturn: [])
+    }()
+
+    lazy var filteredIncidentsDriver: Driver<[Incident]> = {
+        filteredIncidents.observe(on: MainScheduler.instance).asDriver(onErrorJustReturn: [])
+    }()
+
+    lazy var isLoadingDriver: Driver<Bool> = {
+        isLoading.observe(on: MainScheduler.instance).asDriver(onErrorJustReturn: false)
     }()
 
     // Loading state
