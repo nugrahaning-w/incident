@@ -143,7 +143,7 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
         view.annotation = annotation
         view.canShowCallout = true
 
-        let targetSize = CGSize(width: 12, height: 12)
+        let targetSize = CGSize(width: 32, height: 32)
         view.frame.size = targetSize
         view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
         view.image = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
