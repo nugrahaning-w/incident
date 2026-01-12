@@ -136,10 +136,9 @@ class IncidentListViewController: UIViewController {
         // MARK: - Navigation
 
         private func showDetail(_ incident: Incident) {
-            print("Go to detail")
-    //        let viewModel = IncidentDetailViewModel(incident: incident)
-    //        let vc = IncidentDetailViewController(viewModel: viewModel)
-    //        navigationController?.pushViewController(vc, animated: true)
+            let vm = IncidentDetailViewModel(incident: incident)
+            let vc = IncidentDetailViewController(viewModel: vm)
+            navigationController?.pushViewController(vc, animated: true)
         }
 
         // MARK: - Error Handling
