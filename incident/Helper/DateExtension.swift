@@ -7,11 +7,17 @@
 
 import Foundation
 
-extension Date {
+private enum IncidentDateFormatter {
+    static let display: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM d, yyyy 'at' h:mm:ss a"
+        return f
+    }()
+}
 
+extension Date {
     var incidentFormatted: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy 'at' h:mm:ss a"
-        return formatter.string(from: self)
+        IncidentDateFormatter.display.string(from: self)
     }
 }
