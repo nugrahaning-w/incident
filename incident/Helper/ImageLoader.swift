@@ -2,7 +2,7 @@ import UIKit
 import ImageIO
 import MobileCoreServices
 
-final class ImageLoader {
+final class ImageLoader: ImageLoading {
     static let shared = ImageLoader()
 
     private let cache = NSCache<NSURL, UIImage>()
