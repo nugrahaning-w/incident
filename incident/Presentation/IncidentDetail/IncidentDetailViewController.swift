@@ -138,31 +138,32 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard !(annotation is MKUserLocation) else { return nil }
         let id = "IncidentPin"
-        let view = mapView.dequeueReusableAnnotationView(withIdentifier: id)
+        let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: id)
             ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
-        view.annotation = annotation
-        view.canShowCallout = true
+        annotationView.annotation = annotation
+        annotationView.canShowCallout = true
 
-        // Target size
-        let targetSize = CGSize(width: 36, height: 36)
-        view.frame.size = targetSize
+        let targetSize = CGSize(width: 32, height: 32)
+        annotationView.frame.size = targetSize
 
-        // Default system pin (12x12)
+        // Default system pin (scaled)
         let defaultImg = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
-        view.image = defaultImg
+        annotationView.image = defaultImg
+        annotationView.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
 
         if let url = URL(string: viewModel.iconURLString) {
-            URLSession.shared.dataTask(with: url) { data, _, _ in
+            // Use weak reference to avoid retaining the annotation view
+            URLSession.shared.dataTask(with: url) { [weak annotationView] data, _, _ in
                 guard let data, let img = UIImage(data: data) else { return }
                 let scaled = img.scaled(to: targetSize)
                 DispatchQueue.main.async {
+                    guard let view = annotationView else { return }
                     view.image = scaled
                     view.frame.size = targetSize
-                    // Optional: adjust center so the tip points to coordinate
                     view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
                 }
             }.resume()
         }
-        return view
+        return annotationView
     }
 }
