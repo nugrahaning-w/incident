@@ -27,6 +27,11 @@ final class IncidentTableViewCell: UITableViewCell {
     private let dateLabel = UILabel()
     private let statusBadgeLabel = PaddingLabel()
 
+    // MARK: - Image Loading State
+
+    private var imageToken: UUID?
+    private var imageURL: URL?
+
     // MARK: - Init
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -127,14 +132,28 @@ final class IncidentTableViewCell: UITableViewCell {
 
     // MARK: - Image Loading
 
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        if let url = imageURL, let token = imageToken {
+            ImageLoader.shared.cancel(url: url, token: token)
+        }
+        imageToken = nil
+        imageURL = nil
+        iconImageView.image = nil
+        iconLoadingIndicator.stopAnimating()
+    }
+
     private func loadIcon(from url: URL) {
+        imageURL = url
         iconImageView.image = nil
         iconLoadingIndicator.startAnimating()
 
-        // Use cached loader; scale to 40x40 for the cell
-        ImageLoader.shared.load(url: url, targetSize: CGSize(width: 40, height: 40)) { [weak self] image in
+        // Scale to 40x40 for the cell (off-main-thread by ImageLoader)
+        imageToken = ImageLoader.shared.load(url: url, targetSize: CGSize(width: 40, height: 40)) { [weak self] image in
             guard let self else { return }
             self.iconLoadingIndicator.stopAnimating()
+            // Ensure cell still represents the same URL
+            guard self.imageURL == url else { return }
             self.iconImageView.image = image ?? UIImage(systemName: "exclamationmark.triangle")
         }
     }
