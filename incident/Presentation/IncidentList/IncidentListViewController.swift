@@ -15,6 +15,7 @@ class IncidentListViewController: UIViewController {
 
         private let tableView = UITableView()
         private let refreshControl = UIRefreshControl()
+        private let searchController = UISearchController(searchResultsController: nil)
 
         // MARK: - Properties
 
@@ -39,6 +40,7 @@ class IncidentListViewController: UIViewController {
             setupUI()
             setupTableView()
             setupNavigationBar()
+            setupSearch()
             bindViewModel()
         }
 
@@ -77,10 +79,42 @@ class IncidentListViewController: UIViewController {
             )
             navigationItem.rightBarButtonItem = sortButton
 
+            // Left search button
+            let searchButton = UIBarButtonItem(
+                image: UIImage(systemName: "magnifyingglass"),
+                style: .plain,
+                target: nil,
+                action: nil
+            )
+            navigationItem.leftBarButtonItem = searchButton
+
+            searchButton.rx.tap
+                .subscribe(onNext: { [weak self] in
+                    guard let self = self else { return }
+                    self.searchController.isActive = true
+                    DispatchQueue.main.async { self.searchController.searchBar.becomeFirstResponder() }
+                })
+                .disposed(by: disposeBag)
+
             sortButton.rx.tap
                 .withLatestFrom(viewModel.sortAscending)
                 .map { !$0 }
                 .bind(to: viewModel.sortAscending)
+                .disposed(by: disposeBag)
+        }
+
+        private func setupSearch() {
+            searchController.obscuresBackgroundDuringPresentation = false
+            searchController.hidesNavigationBarDuringPresentation = false
+            searchController.searchBar.placeholder = "Search incidents"
+            navigationItem.searchController = searchController
+            definesPresentationContext = true
+
+            // Bind search text to ViewModel
+            searchController.searchBar.rx.text.orEmpty
+                .debounce(.milliseconds(200), scheduler: MainScheduler.instance)
+                .distinctUntilChanged()
+                .bind(to: viewModel.searchQuery)
                 .disposed(by: disposeBag)
         }
 
@@ -96,12 +130,10 @@ class IncidentListViewController: UIViewController {
             .bind(to: viewModel.reloadTrigger)
             .disposed(by: disposeBag)
 
-            // Bind incidents to tableView
-            viewModel.incidents
+            // Use filteredIncidents from ViewModel
+            viewModel.filteredIncidents
                 .observe(on: MainScheduler.instance)
-                .do(onNext: { [weak self] _ in
-                    self?.refreshControl.endRefreshing()
-                })
+                .do(onNext: { [weak self] _ in self?.refreshControl.endRefreshing() })
                 .bind(to: tableView.rx.items(
                     cellIdentifier: IncidentTableViewCell.identifier,
                     cellType: IncidentTableViewCell.self
