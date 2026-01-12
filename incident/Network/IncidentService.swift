@@ -16,10 +16,9 @@ protocol IncidentServiceProtocol {
     func fetchIncidentsRx() -> Single<[Incident]>
 }
 
-// MARK: - Implementation
-final class IncidentService: IncidentServiceProtocol {
+// MARK: - Service implements Repository
+final class IncidentService: IncidentServiceProtocol, IncidentRepository {
 
-    // API source
     private let urlString = "https://gist.githubusercontent.com/xxfast/26856d7c1a06619d013d2e6a578b0426/raw/a6c5cbe23c1a740a1afe87f752b5df4dbfe1b624/mdc-challenge.json"
 
     private func makeRequest() throws -> URLRequest {
@@ -31,7 +30,6 @@ final class IncidentService: IncidentServiceProtocol {
 
     private func decodeIncidents(from data: Data) throws -> [Incident] {
         let decoder = JSONDecoder()
-        // Incident handles its own date parsing, no need for .iso8601 strategy
         return try decoder.decode([Incident].self, from: data)
     }
 
@@ -53,6 +51,11 @@ final class IncidentService: IncidentServiceProtocol {
     }
 
     func fetchIncidentsRx() -> Single<[Incident]> {
+        fetchIncidents() // delegate to repository method to keep DRY
+    }
+
+    // MARK: - IncidentRepository
+    func fetchIncidents() -> Single<[Incident]> {
         Single.create { observer in
             let request: URLRequest
             do {
@@ -61,7 +64,6 @@ final class IncidentService: IncidentServiceProtocol {
                 observer(.failure(NetworkError.invalidURL))
                 return Disposables.create()
             }
-            // If Onet returns a URLSessionTask in future, keep a ref and cancel in dispose.
             Onet.createURLSessionTask(for: request) { data, response, error in
                 if let error = error {
                     observer(.failure(NetworkError.serverError(error.localizedDescription)))
