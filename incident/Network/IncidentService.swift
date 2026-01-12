@@ -7,17 +7,10 @@
 
 import Foundation
 import RxSwift
-import RxCocoa
 import Onet
 
-// MARK: - Protocol
-protocol IncidentServiceProtocol {
-    func fetchIncidents(completion: @escaping (Result<[Incident], NetworkError>) -> Void)
-    func fetchIncidentsRx() -> Single<[Incident]>
-}
-
 // MARK: - Service implements Repository
-final class IncidentService: IncidentServiceProtocol, IncidentRepository {
+final class IncidentService: IncidentRepository {
 
     private let urlString = "https://gist.githubusercontent.com/xxfast/26856d7c1a06619d013d2e6a578b0426/raw/a6c5cbe23c1a740a1afe87f752b5df4dbfe1b624/mdc-challenge.json"
 
@@ -33,28 +26,7 @@ final class IncidentService: IncidentServiceProtocol, IncidentRepository {
         return try decoder.decode([Incident].self, from: data)
     }
 
-    func fetchIncidents(completion: @escaping (Result<[Incident], NetworkError>) -> Void) {
-        do {
-            let request = try makeRequest()
-            Onet.createURLSessionTask(for: request) { data, response, error in
-                if let error = error { completion(.failure(.serverError(error.localizedDescription))); return }
-                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    completion(.failure(.serverError("HTTP \(http.statusCode)"))); return
-                }
-                guard let data = data else { completion(.failure(.noData)); return }
-                do { completion(.success(try self.decodeIncidents(from: data))) }
-                catch { completion(.failure(.decodingError)) }
-            }
-        } catch {
-            completion(.failure(.invalidURL))
-        }
-    }
-
-    func fetchIncidentsRx() -> Single<[Incident]> {
-        fetchIncidents() // delegate to repository method to keep DRY
-    }
-
-    // MARK: - IncidentRepository
+    // Single source of truth for fetching
     func fetchIncidents() -> Single<[Incident]> {
         Single.create { observer in
             let request: URLRequest
@@ -64,6 +36,7 @@ final class IncidentService: IncidentServiceProtocol, IncidentRepository {
                 observer(.failure(NetworkError.invalidURL))
                 return Disposables.create()
             }
+
             Onet.createURLSessionTask(for: request) { data, response, error in
                 if let error = error {
                     observer(.failure(NetworkError.serverError(error.localizedDescription)))
@@ -83,6 +56,7 @@ final class IncidentService: IncidentServiceProtocol, IncidentRepository {
                     observer(.failure(NetworkError.decodingError))
                 }
             }
+
             return Disposables.create()
         }
     }
