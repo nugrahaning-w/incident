@@ -33,6 +33,7 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
         mapView.delegate = self
         mapView.isZoomEnabled = true
         mapView.isScrollEnabled = true
+        mapView.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "IncidentPin")
 
         cardView.backgroundColor = .white
         cardView.layer.cornerRadius = 12
@@ -138,26 +139,23 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard !(annotation is MKUserLocation) else { return nil }
         let id = "IncidentPin"
-        let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: id)
-            ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
-        annotationView.annotation = annotation
-        annotationView.canShowCallout = true
+        let view = mapView.dequeueReusableAnnotationView(withIdentifier: id, for: annotation)
+        view.annotation = annotation
+        view.canShowCallout = true
 
-        let targetSize = CGSize(width: 32, height: 32)
-        annotationView.frame.size = targetSize
-
-        let defaultImg = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
-        annotationView.image = defaultImg
-        annotationView.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
+        let targetSize = CGSize(width: 12, height: 12)
+        view.frame.size = targetSize
+        view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
+        view.image = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
 
         if let url = URL(string: viewModel.iconURLString) {
-            ImageLoader.shared.load(url: url, targetSize: targetSize) { [weak annotationView] image in
-                guard let view = annotationView, let image else { return }
-                view.image = image
-                view.frame.size = targetSize
-                view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
+            ImageLoader.shared.load(url: url, targetSize: targetSize) { [weak view] image in
+                guard let v = view, let image else { return }
+                v.image = image
+                v.frame.size = targetSize
+                v.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
             }
         }
-        return annotationView
+        return view
     }
 }
