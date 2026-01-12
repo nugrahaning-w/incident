@@ -19,7 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let service = IncidentService()
 
         // 2️⃣ Create ViewModel
-        let viewModel = IncidentListViewModel(service: service)
+        let viewModel = IncidentListViewModel(repository: service)
 
         // 3️⃣ Set root
         let initialViewController = IncidentListViewController(viewModel: viewModel)

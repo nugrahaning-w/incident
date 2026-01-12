@@ -27,7 +27,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let service = IncidentService()
 
         // 2️⃣ Create ViewModel
-        let viewModel = IncidentListViewModel(service: service)
+        let viewModel = IncidentListViewModel(repository: service)
 
         // 3️⃣ Create ViewController
         let listVC = IncidentListViewController(viewModel: viewModel)

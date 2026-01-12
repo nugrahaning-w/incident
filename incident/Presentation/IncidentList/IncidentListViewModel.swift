@@ -22,8 +22,8 @@ final class IncidentListViewModel: BaseViewModel {
         let fetched = reloadTrigger
             .startWith(())
             .do(onNext: { [weak self] _ in self?.activityRelay.accept(true) }) // start loading
-            .flatMapLatest { [service, errorRelay] _ in
-                service.fetchIncidentsRx()
+            .flatMapLatest { [repository, errorRelay] _ in
+                repository.fetchIncidents()
                     .asObservable()
                     .catch { error in
                         errorRelay.accept(error.localizedDescription)
@@ -49,24 +49,7 @@ final class IncidentListViewModel: BaseViewModel {
     lazy var filteredIncidents: Observable<[Incident]> = {
         Observable
             .combineLatest(incidents, searchQuery.distinctUntilChanged())
-            .map { list, query in
-                let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                guard !q.isEmpty else { return list }
-                return list.filter { inc in
-                    let statusText: String = {
-                        switch inc.status {
-                        case .underControl: return "Under Control"
-                        case .onScene: return "On Scene"
-                        case .outOfControl: return "Out of Control"
-                        case .pending: return "Pending"
-                        }
-                    }()
-                    return inc.title.lowercased().contains(q)
-                        || inc.location.lowercased().contains(q)
-                        || inc.type.lowercased().contains(q)
-                        || statusText.lowercased().contains(q)
-                }
-            }
+            .map(Self.filterIncidents)
             .share(replay: 1, scope: .whileConnected) // <-- scoped replay
     }()
 
@@ -86,10 +69,24 @@ final class IncidentListViewModel: BaseViewModel {
     private let activityRelay = BehaviorRelay<Bool>(value: false)
     var isLoading: Observable<Bool> { activityRelay.asObservable().distinctUntilChanged() }
 
-    private let service: IncidentServiceProtocol
+    // Dependencies
+    private let repository: IncidentRepository
 
-    init(service: IncidentServiceProtocol) {
-        self.service = service
+    init(repository: IncidentRepository) {
+        self.repository = repository
         super.init()
+    }
+
+    // Pure function (SRP)
+    private static func filterIncidents(list: [Incident], query: String) -> [Incident] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return list }
+        return list.filter { inc in
+            let statusText = inc.status.rawValue.lowercased()
+            return inc.title.lowercased().contains(q)
+                || inc.location.lowercased().contains(q)
+                || inc.type.lowercased().contains(q)
+                || statusText.contains(q)
+        }
     }
 }
