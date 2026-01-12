@@ -1,0 +1,33 @@
+{
+  "originHash" : "152a454018f5ef9f96c058c2e2d31fa4191adcebcd163d788401b38d9780dca4",
+  "pins" : [
+    {
+      "identity" : "onetlib",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nugrahaning-w/OnetLib",
+      "state" : {
+        "revision" : "bb8bb314f8f6bad033d32484d0c35229ccf61ed9",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "rxswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nugrahaning-w/RxSwift",
+      "state" : {
+        "revision" : "7e01c05f25c025143073eaa3be3532f9375c614b",
+        "version" : "6.1.0"
+      }
+    },
+    {
+      "identity" : "snapkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SnapKit/SnapKit.git",
+      "state" : {
+        "revision" : "2842e6e84e82eb9a8dac0100ca90d9444b0307f4",
+        "version" : "5.7.1"
+      }
+    }
+  ],
+  "version" : 3
+}
