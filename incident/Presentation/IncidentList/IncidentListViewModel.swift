@@ -32,7 +32,7 @@ final class IncidentListViewModel: BaseViewModel {
             .do(onNext: { [weak self] _ in self?.activityRelay.accept(false) },
                 onError: { [weak self] _ in self?.activityRelay.accept(false) },
                 onCompleted: { [weak self] in self?.activityRelay.accept(false) })
-            .share(replay: 1)
+            .share(replay: 1, scope: .whileConnected) // <-- scoped replay
 
         return Observable
             .combineLatest(fetched, sortAscending)
@@ -42,7 +42,7 @@ final class IncidentListViewModel: BaseViewModel {
                               : $0.lastUpdated > $1.lastUpdated
                 }
             }
-            .share(replay: 1)
+            .share(replay: 1, scope: .whileConnected) // <-- scoped replay
     }()
 
     lazy var filteredIncidents: Observable<[Incident]> = {
@@ -50,7 +50,7 @@ final class IncidentListViewModel: BaseViewModel {
             .combineLatest(incidents, searchQuery.distinctUntilChanged())
             .map { list, query in
                 let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                guard q.isEmpty == false else { return list }
+                guard !q.isEmpty else { return list }
                 return list.filter { inc in
                     let statusText: String = {
                         switch inc.status {
@@ -66,7 +66,7 @@ final class IncidentListViewModel: BaseViewModel {
                         || statusText.lowercased().contains(q)
                 }
             }
-            .share(replay: 1)
+            .share(replay: 1, scope: .whileConnected) // <-- scoped replay
     }()
 
     // Loading state
