@@ -10,6 +10,7 @@ import SnapKit
 
 final class IncidentDetailViewController: BaseViewController<IncidentDetailViewModel>, MKMapViewDelegate {
 
+    private let imageLoader: ImageLoading = ImageLoader.shared
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     private let mapContainer = UIView()
@@ -149,7 +150,7 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
         view.image = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
 
         if let url = URL(string: viewModel.iconURLString) {
-            ImageLoader.shared.load(url: url, targetSize: targetSize) { [weak view] image in
+            imageLoader.load(url: url, targetSize: targetSize) { [weak view] image in
                 guard let v = view, let image else { return }
                 v.image = image
                 v.frame.size = targetSize

@@ -32,6 +32,11 @@ final class IncidentTableViewCell: UITableViewCell {
     private var imageToken: UUID?
     private var imageURL: URL?
 
+    // MARK: - Dependencies
+
+    private let dateFormatter: DateFormatting = IncidentDateFormatterProvider()
+    private let imageLoader: ImageLoading = ImageLoader.shared
+
     // MARK: - Init
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -122,7 +127,7 @@ final class IncidentTableViewCell: UITableViewCell {
 
     func configure(with incident: Incident) {
         titleLabel.text = incident.title
-        dateLabel.text = incident.lastUpdated.incidentFormatted
+        dateLabel.text = dateFormatter.displayString(for: incident.lastUpdated)
 
         statusBadgeLabel.text = incident.status.rawValue
         statusBadgeLabel.backgroundColor = incident.status.color
@@ -135,7 +140,7 @@ final class IncidentTableViewCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         if let url = imageURL, let token = imageToken {
-            ImageLoader.shared.cancel(url: url, token: token)
+            imageLoader.cancel(url: url, token: token)
         }
         imageToken = nil
         imageURL = nil
@@ -148,8 +153,7 @@ final class IncidentTableViewCell: UITableViewCell {
         iconImageView.image = nil
         iconLoadingIndicator.startAnimating()
 
-        // Scale to 40x40 for the cell (off-main-thread by ImageLoader)
-        imageToken = ImageLoader.shared.load(url: url, targetSize: CGSize(width: 40, height: 40)) { [weak self] image in
+        imageToken = imageLoader.load(url: url, targetSize: CGSize(width: 40, height: 40)) { [weak self] image in
             guard let self else { return }
             self.iconLoadingIndicator.stopAnimating()
             // Ensure cell still represents the same URL
