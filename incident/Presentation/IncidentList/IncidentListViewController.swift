@@ -16,6 +16,14 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
     private let refreshControl = UIRefreshControl()
     private let searchController = UISearchController(searchResultsController: nil)
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let emptyLabel: UILabel = {
+        let l = UILabel()
+        l.text = "No results"
+        l.textAlignment = .center
+        l.textColor = .secondaryLabel
+        l.isHidden = true
+        return l
+    }()
 
     override var showsLargeTitle: Bool { true }
 
@@ -72,6 +80,13 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
             .map { !$0 }
             .bind(to: viewModel.sortAscending)
             .disposed(by: disposeBag)
+
+        view.addSubview(emptyLabel)
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
     }
 
     override func setupBindings() {
@@ -132,6 +147,16 @@ final class IncidentListViewController: BaseViewController<IncidentListViewModel
         tableView.rx.itemSelected
             .subscribe(onNext: { [weak self] indexPath in
                 self?.tableView.deselectRow(at: indexPath, animated: true)
+            })
+            .disposed(by: disposeBag)
+
+        Observable
+            .combineLatest(viewModel.filteredIncidents, viewModel.isLoading)
+            .map { items, loading in items.isEmpty && !loading }
+            .distinctUntilChanged()
+            .observe(on: MainScheduler.instance)
+            .subscribe(onNext: { [weak self] show in
+                self?.emptyLabel.isHidden = !show
             })
             .disposed(by: disposeBag)
     }
