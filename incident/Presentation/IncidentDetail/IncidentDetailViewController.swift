@@ -146,23 +146,17 @@ final class IncidentDetailViewController: BaseViewController<IncidentDetailViewM
         let targetSize = CGSize(width: 32, height: 32)
         annotationView.frame.size = targetSize
 
-        // Default system pin (scaled)
         let defaultImg = UIImage(systemName: "mappin.circle.fill")?.scaled(to: targetSize)
         annotationView.image = defaultImg
         annotationView.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
 
         if let url = URL(string: viewModel.iconURLString) {
-            // Use weak reference to avoid retaining the annotation view
-            URLSession.shared.dataTask(with: url) { [weak annotationView] data, _, _ in
-                guard let data, let img = UIImage(data: data) else { return }
-                let scaled = img.scaled(to: targetSize)
-                DispatchQueue.main.async {
-                    guard let view = annotationView else { return }
-                    view.image = scaled
-                    view.frame.size = targetSize
-                    view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
-                }
-            }.resume()
+            ImageLoader.shared.load(url: url, targetSize: targetSize) { [weak annotationView] image in
+                guard let view = annotationView, let image else { return }
+                view.image = image
+                view.frame.size = targetSize
+                view.centerOffset = CGPoint(x: 0, y: -targetSize.height / 2)
+            }
         }
         return annotationView
     }
