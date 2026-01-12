@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Onet
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -16,6 +17,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
 
+        #if DEBUG
+                Onet.configure(debugMode: true)
+        #else
+                Onet.configure(debugMode: false)
+        #endif
+        
         // 1️⃣ Create service
         let service = IncidentService()
 

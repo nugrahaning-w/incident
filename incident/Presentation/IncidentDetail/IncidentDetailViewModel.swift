@@ -7,14 +7,14 @@
 import Foundation
 import CoreLocation
 
-final class IncidentDetailViewModel {
+final class IncidentDetailViewModel: BaseViewModel {
 
     // MARK: - Stored
     private let incident: Incident
 
     // MARK: - Outputs for UI
     var titleText: String { incident.title }
-    var locationText: String { incident.location } // use .uppercased() if you want exact look
+    var locationText: String { incident.location }
     var statusText: String {
         switch incident.status {
         case .underControl: return "Under Control"
@@ -24,24 +24,14 @@ final class IncidentDetailViewModel {
         }
     }
     var typeText: String { incident.type }
-    var callTimeText: String { Self.displayDateFormatter.string(from: incident.callTime) }
+    var callTimeText: String { incident.callTime.incidentFormatted }
     var descriptionText: String { incident.description }
-    var coordinate: CLLocationCoordinate2D {
-        .init(latitude: incident.latitude, longitude: incident.longitude)
-    }
+    var coordinate: CLLocationCoordinate2D { .init(latitude: incident.latitude, longitude: incident.longitude) }
     var iconURLString: String { incident.iconURL.absoluteString }
 
     // MARK: - Init
     init(incident: Incident) {
         self.incident = incident
+        super.init()
     }
-
-    // MARK: - Private
-    private static let displayDateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateStyle = .medium
-        df.timeStyle = .medium
-        return df
-    }()
 }

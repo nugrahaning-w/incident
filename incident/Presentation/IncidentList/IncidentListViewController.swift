@@ -9,175 +9,113 @@ import UIKit
 import RxSwift
 import RxCocoa
 
-class IncidentListViewController: UIViewController {
+final class IncidentListViewController: BaseViewController<IncidentListViewModel> {
 
-    // MARK: - UI
+    // UI
+    private let tableView = UITableView()
+    private let refreshControl = UIRefreshControl()
+    private let searchController = UISearchController(searchResultsController: nil)
 
-        private let tableView = UITableView()
-        private let refreshControl = UIRefreshControl()
-        private let searchController = UISearchController(searchResultsController: nil)
+    override var showsLargeTitle: Bool { true }
 
-        // MARK: - Properties
+    // Init uses BaseViewController’s generic init
+    override func setupUI() {
+        view.backgroundColor = .systemGroupedBackground
+        title = "Incidents"
 
-        private let viewModel: IncidentListViewModel
-        private let disposeBag = DisposeBag()
+        view.addSubview(tableView)
+        tableView.translatesAutoresizingMaskIntoConstraints = false
 
-        // MARK: - Init
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
 
-        init(viewModel: IncidentListViewModel) {
-            self.viewModel = viewModel
-            super.init(nibName: nil, bundle: nil)
-        }
+        tableView.register(IncidentTableViewCell.self,
+                           forCellReuseIdentifier: IncidentTableViewCell.identifier)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 80
+        tableView.refreshControl = refreshControl
+        tableView.tableFooterView = UIView()
 
-        required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
+        // Navigation buttons
+        let sortButton = UIBarButtonItem(image: UIImage(systemName: "arrow.up.arrow.down"), style: .plain, target: nil, action: nil)
+        let searchButton = UIBarButtonItem(image: UIImage(systemName: "magnifyingglass"), style: .plain, target: nil, action: nil)
+        navigationItem.rightBarButtonItem = sortButton
+        navigationItem.leftBarButtonItem = searchButton
 
-        // MARK: - Lifecycle
+        // Search controller
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.hidesNavigationBarDuringPresentation = false
+        searchController.searchBar.placeholder = "Search incidents"
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
 
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            setupUI()
-            setupTableView()
-            setupNavigationBar()
-            setupSearch()
-            bindViewModel()
-        }
-
-        // MARK: - Setup UI
-
-        private func setupUI() {
-            view.backgroundColor = .systemGroupedBackground
-            title = "Incidents"
-
-            view.addSubview(tableView)
-            tableView.translatesAutoresizingMaskIntoConstraints = false
-
-            NSLayoutConstraint.activate([
-                tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-                tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-            ])
-        }
-
-        private func setupTableView() {
-            tableView.register(IncidentTableViewCell.self,
-                               forCellReuseIdentifier: IncidentTableViewCell.identifier)
-            tableView.rowHeight = UITableView.automaticDimension
-            tableView.estimatedRowHeight = 80
-            tableView.refreshControl = refreshControl
-            tableView.tableFooterView = UIView()
-        }
-
-        private func setupNavigationBar() {
-            let sortButton = UIBarButtonItem(
-                image: UIImage(systemName: "arrow.up.arrow.down"),
-                style: .plain,
-                target: nil,
-                action: nil
-            )
-            navigationItem.rightBarButtonItem = sortButton
-
-            // Left search button
-            let searchButton = UIBarButtonItem(
-                image: UIImage(systemName: "magnifyingglass"),
-                style: .plain,
-                target: nil,
-                action: nil
-            )
-            navigationItem.leftBarButtonItem = searchButton
-
-            searchButton.rx.tap
-                .subscribe(onNext: { [weak self] in
-                    guard let self = self else { return }
-                    self.searchController.isActive = true
-                    DispatchQueue.main.async { self.searchController.searchBar.becomeFirstResponder() }
-                })
-                .disposed(by: disposeBag)
-
-            sortButton.rx.tap
-                .withLatestFrom(viewModel.sortAscending)
-                .map { !$0 }
-                .bind(to: viewModel.sortAscending)
-                .disposed(by: disposeBag)
-        }
-
-        private func setupSearch() {
-            searchController.obscuresBackgroundDuringPresentation = false
-            searchController.hidesNavigationBarDuringPresentation = false
-            searchController.searchBar.placeholder = "Search incidents"
-            navigationItem.searchController = searchController
-            definesPresentationContext = true
-
-            // Bind search text to ViewModel
-            searchController.searchBar.rx.text.orEmpty
-                .debounce(.milliseconds(200), scheduler: MainScheduler.instance)
-                .distinctUntilChanged()
-                .bind(to: viewModel.searchQuery)
-                .disposed(by: disposeBag)
-        }
-
-        // MARK: - Bindings
-
-        private func bindViewModel() {
-
-            // Reload trigger (initial + pull to refresh)
-            Observable.merge(
-                Observable.just(()),
-                refreshControl.rx.controlEvent(.valueChanged).map { _ in }
-            )
-            .bind(to: viewModel.reloadTrigger)
+        // Button actions
+        searchButton.rx.tap
+            .subscribe(onNext: { [weak self] in
+                guard let self else { return }
+                self.searchController.isActive = true
+                DispatchQueue.main.async { self.searchController.searchBar.becomeFirstResponder() }
+            })
             .disposed(by: disposeBag)
 
-            // Use filteredIncidents from ViewModel
-            viewModel.filteredIncidents
-                .observe(on: MainScheduler.instance)
-                .do(onNext: { [weak self] _ in self?.refreshControl.endRefreshing() })
-                .bind(to: tableView.rx.items(
-                    cellIdentifier: IncidentTableViewCell.identifier,
-                    cellType: IncidentTableViewCell.self
-                )) { _, incident, cell in
-                    cell.configure(with: incident)
-                }
-                .disposed(by: disposeBag)
+        sortButton.rx.tap
+            .withLatestFrom(viewModel.sortAscending)
+            .map { !$0 }
+            .bind(to: viewModel.sortAscending)
+            .disposed(by: disposeBag)
+    }
 
-            // Handle cell selection
-            tableView.rx.modelSelected(Incident.self)
-                .subscribe(onNext: { [weak self] incident in
-                    self?.showDetail(incident)
-                })
-                .disposed(by: disposeBag)
+    override func setupBindings() {
+        super.setupBindings()
 
-            // Deselect cell automatically
-            tableView.rx.itemSelected
-                .subscribe(onNext: { [weak self] indexPath in
-                    self?.tableView.deselectRow(at: indexPath, animated: true)
-                })
-                .disposed(by: disposeBag)
+        // Bind search text
+        searchController.searchBar.rx.text.orEmpty
+            .debounce(.milliseconds(200), scheduler: MainScheduler.instance)
+            .distinctUntilChanged()
+            .bind(to: viewModel.searchQuery)
+            .disposed(by: disposeBag)
 
-            // Bind error messages to show an alert
-            viewModel.errorMessage
-                .observe(on: MainScheduler.instance)
-                .subscribe(onNext: { [weak self] message in
-                    self?.showErrorAlert(message: message)
-                })
-                .disposed(by: disposeBag)
-        }
+        // Reload trigger (initial + pull-to-refresh)
+        Observable.merge(
+            Observable.just(()),
+            refreshControl.rx.controlEvent(.valueChanged).map { _ in }
+        )
+        .bind(to: viewModel.reloadTrigger)
+        .disposed(by: disposeBag)
 
-        // MARK: - Navigation
+        // Table binding
+        viewModel.filteredIncidents
+            .observe(on: MainScheduler.instance)
+            .do(onNext: { [weak self] _ in self?.refreshControl.endRefreshing() })
+            .bind(to: tableView.rx.items(
+                cellIdentifier: IncidentTableViewCell.identifier,
+                cellType: IncidentTableViewCell.self
+            )) { _, incident, cell in
+                cell.configure(with: incident)
+            }
+            .disposed(by: disposeBag)
 
-        private func showDetail(_ incident: Incident) {
-            let vm = IncidentDetailViewModel(incident: incident)
-            let vc = IncidentDetailViewController(viewModel: vm)
-            navigationController?.pushViewController(vc, animated: true)
-        }
+        // Selection
+        tableView.rx.modelSelected(Incident.self)
+            .subscribe(onNext: { [weak self] incident in
+                self?.showDetail(incident)
+            })
+            .disposed(by: disposeBag)
 
-        // MARK: - Error Handling
+        tableView.rx.itemSelected
+            .subscribe(onNext: { [weak self] indexPath in
+                self?.tableView.deselectRow(at: indexPath, animated: true)
+            })
+            .disposed(by: disposeBag)
+    }
 
-        private func showErrorAlert(message: String) {
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
-        }
+    private func showDetail(_ incident: Incident) {
+        let vm = IncidentDetailViewModel(incident: incident)
+        let vc = IncidentDetailViewController(viewModel: vm)
+        navigationController?.pushViewController(vc, animated: true)
+    }
 }
