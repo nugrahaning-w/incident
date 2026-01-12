@@ -22,82 +22,54 @@ final class IncidentService: IncidentServiceProtocol {
     // API source
     private let urlString = "https://gist.githubusercontent.com/xxfast/26856d7c1a06619d013d2e6a578b0426/raw/a6c5cbe23c1a740a1afe87f752b5df4dbfe1b624/mdc-challenge.json"
 
+    private func makeRequest() throws -> URLRequest {
+        guard let url = URL(string: urlString) else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        req.httpMethod = "GET"
+        return req
+    }
+
+    private func decodeIncidents(from data: Data) throws -> [Incident] {
+        let decoder = JSONDecoder()
+        // Incident handles its own date parsing, no need for .iso8601 strategy
+        return try decoder.decode([Incident].self, from: data)
+    }
+
     func fetchIncidents(completion: @escaping (Result<[Incident], NetworkError>) -> Void) {
-
-        guard let url = URL(string: urlString) else {
-            completion(.failure(.invalidURL)); return
-        }
-
-        let request = URLRequest(url: url)
-
-        // Onet-backed URLSession task
-        Onet.createURLSessionTask(for: request) { data, response, error in
-            // Network error
-            if let error = error {
-                completion(.failure(.serverError(error.localizedDescription)))
-                return
+        do {
+            let request = try makeRequest()
+            Onet.createURLSessionTask(for: request) { data, response, error in
+                if let error = error { completion(.failure(.serverError(error.localizedDescription))); return }
+                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    completion(.failure(.serverError("HTTP \(http.statusCode)"))); return
+                }
+                guard let data = data else { completion(.failure(.noData)); return }
+                do { completion(.success(try self.decodeIncidents(from: data))) }
+                catch { completion(.failure(.decodingError)) }
             }
-
-            // Optional: check HTTP status code
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                completion(.failure(.serverError("HTTP \(http.statusCode)")))
-                return
-            }
-
-            guard let data = data else {
-                completion(.failure(.noData)); return
-            }
-
-            do {
-                // Incident handles its own date parsing; keep .iso8601 if you still rely on decoder strategy elsewhere
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let incidents = try decoder.decode([Incident].self, from: data)
-                completion(.success(incidents))
-            } catch let decodingError as DecodingError {
-                #if DEBUG
-                print("Decoding error: \(decodingError)")
-                #endif
-                completion(.failure(.decodingError))
-            } catch {
-                completion(.failure(.serverError(error.localizedDescription)))
-            }
+        } catch {
+            completion(.failure(.invalidURL))
         }
     }
 
-    // RxSwift trait version (Single)
     func fetchIncidentsRx() -> Single<[Incident]> {
-        guard let url = URL(string: urlString) else {
-            return .error(NetworkError.invalidURL)
-        }
-
-        return Single.create { observer in
-            let request = URLRequest(url: url)
+        Single.create { observer in
+            let request: URLRequest
+            do {
+                request = try self.makeRequest()
+            } catch {
+                observer(.failure(.invalidURL))
+                return Disposables.create()
+            }
+            // If Onet returns a URLSessionTask in future, keep a ref and cancel in dispose.
             Onet.createURLSessionTask(for: request) { data, response, error in
-                if let error = error {
-                    observer(.failure(NetworkError.serverError(error.localizedDescription)))
-                    return
-                }
+                if let error = error { observer(.failure(.serverError(error.localizedDescription))); return }
                 if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    observer(.failure(NetworkError.serverError("HTTP \(http.statusCode)")))
-                    return
+                    observer(.failure(.serverError("HTTP \(http.statusCode)"))); return
                 }
-                guard let data = data else {
-                    observer(.failure(NetworkError.noData)); return
-                }
-                do {
-                    let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601
-                    let incidents = try decoder.decode([Incident].self, from: data)
-                    observer(.success(incidents))
-                } catch let decodingError as DecodingError {
-                    #if DEBUG
-                    print("Decoding error: \(decodingError)")
-                    #endif
-                    observer(.failure(NetworkError.decodingError))
-                } catch {
-                    observer(.failure(NetworkError.serverError(error.localizedDescription)))
-                }
+                guard let data = data else { observer(.failure(.noData)); return }
+                do { observer(.success(try self.decodeIncidents(from: data))) }
+                catch { observer(.failure(.decodingError)) }
             }
             return Disposables.create()
         }
