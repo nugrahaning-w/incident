@@ -58,18 +58,28 @@ final class IncidentService: IncidentServiceProtocol {
             do {
                 request = try self.makeRequest()
             } catch {
-                observer(.failure(.invalidURL))
+                observer(.failure(NetworkError.invalidURL))
                 return Disposables.create()
             }
             // If Onet returns a URLSessionTask in future, keep a ref and cancel in dispose.
             Onet.createURLSessionTask(for: request) { data, response, error in
-                if let error = error { observer(.failure(.serverError(error.localizedDescription))); return }
-                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    observer(.failure(.serverError("HTTP \(http.statusCode)"))); return
+                if let error = error {
+                    observer(.failure(NetworkError.serverError(error.localizedDescription)))
+                    return
                 }
-                guard let data = data else { observer(.failure(.noData)); return }
-                do { observer(.success(try self.decodeIncidents(from: data))) }
-                catch { observer(.failure(.decodingError)) }
+                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    observer(.failure(NetworkError.serverError("HTTP \(http.statusCode)")))
+                    return
+                }
+                guard let data = data else {
+                    observer(.failure(NetworkError.noData))
+                    return
+                }
+                do {
+                    observer(.success(try self.decodeIncidents(from: data)))
+                } catch {
+                    observer(.failure(NetworkError.decodingError))
+                }
             }
             return Disposables.create()
         }
